@@ -6,7 +6,7 @@ authors = "Christian Frech and Marko Laakso"
 //--- INCLUDED REPORTS
 //------------------------------------------------------------------------------------------------
 
-runGSEA = false
+runGSEA = true
 runNetwork = true
 runPGE = true
 runFastQC = false
@@ -637,6 +637,56 @@ for ID, comparison : comparisons
 }
 
 //------------------------------------------------------------------------------------------------
+//--- VENN DIAGRAM(S)
+//------------------------------------------------------------------------------------------------
+
+include "/mnt/projects/kasia/anduril/includes/venn.and"
+
+degSets = CSV2SetList(tables = degCalledLst)
+vennReportLst = record()
+
+// ---  intersection LvsC, HvsC and HvsL
+//---------------------------------------
+
+venn_LvsC_HvsC_HvsL = VennDiagram
+(
+	sets         = degSets,
+	cexSetName   = 0.3,
+	cexSetSize   = 0.3,
+	doWeights    = true,
+	sets1        = "LvsC,HvsC,HvsL",
+	sectionTitle = "Venn diagrams",
+	sectionType  = "subsubsection",
+	types        = "circles"
+)
+vennReportLst["venn_LvsC_HvsC_HvsL"] = venn_LvsC_HvsC_HvsL.report
+
+vennExpanded_LvsC_HvsC_HvsL = ExpandCollapse(relation=venn_LvsC_HvsC_HvsL.sets)
+
+vennSetTableReport_LvsC_AND_HvsC_AND_HvsL = VennSetTableReport
+(
+	vennSetData        = vennExpanded_LvsC_HvsC_HvsL,
+	vennSetNames       = {"LvsC_AND_HvsC_AND_HvsL"},
+	outputComparisons  = {"LvsC", "HvsC", "HvsL"},
+	degs               = degAllLst,
+	geneAnnot          = geneAnnot,
+	section            = "LvsC AND HvsC AND HvsL",
+	sectionType        = "subsubsection",
+	orderBy            = "average",
+	caption            = "These genes were found to be significantly differentially expressed in all three comparison, including " + comparisons["LvsC"].desc + " (set 'A'), " + comparisons["HvsC"].desc + " (set 'B') and " + comparisons["HvsL"].desc + " (set 'C'). " +
+	                     "Genes sorted by average FC."
+)
+vennReportLst["vennSetTableReport_LvsC_AND_HvsC_AND_HvsL"] = vennSetTableReport_LvsC_AND_HvsC_AND_HvsL.report
+
+degReportLst["venn"] = LatexCombiner
+(
+	array        = vennReportLst, 
+	pagebreak    = true,
+	sectionTitle = "DEG overlaps", 
+	sectionType  = "subsection"
+)
+
+//------------------------------------------------------------------------------------------------
 //--- EXPRESSION BOX PLOTS OF SELECTED GENES
 //------------------------------------------------------------------------------------------------
 
@@ -773,10 +823,19 @@ OUTPUT(degExcel.allGenes)
 //------------------------------------------------------------------------------------------------
 include "/mnt/projects/kasia/anduril/includes/gsea.and"
 
+gseaComparisons = record()
+for ID, comparison : comparisons 
+{	
+	if (ID != "24hvs48h") 
+	{
+		gseaComparisons[ID] = comparison
+	}
+}
+
 // produce RNK files for each comparison
 
 rnks = record()
-for ID, comparison : comparisons 
+for ID, comparison : gseaComparisons 
 {	
 	rnks[ID] = DEG2Rnk
 	(
@@ -806,7 +865,7 @@ enrichedDn[category] = record()
 minSetSize[category] = 5
 maxSetSize[category] = 5000
 
-for ID, comparison : comparisons 
+for ID, comparison : gseaComparisons 
 {	
 	gseaMSigDB = GSEA
 	(
@@ -841,7 +900,7 @@ enrichedDn[category] = record()
 minSetSize[category] = 5
 maxSetSize[category] = 1000
 
-for ID, comparison : comparisons 
+for ID, comparison : gseaComparisons 
 {	
 	gseaGeneSigDB = GSEA
 	(
@@ -867,7 +926,7 @@ enrichedDn[category] = record()
 minSetSize[category] = 3
 maxSetSize[category] = 1000
 
-for ID, comparison : comparisons 
+for ID, comparison : gseaComparisons 
 {	
 	gseaDSigDB = GSEA
 	(
@@ -893,7 +952,7 @@ enrichedDn[category] = record()
 minSetSize[category] = 3
 maxSetSize[category] = 5000
 
-for ID, comparison : comparisons 
+for ID, comparison : gseaComparisons 
 {	
 	gseaTFTargets = GSEA
 	(
@@ -922,15 +981,15 @@ gseaReport = GSEAReport
 	enrichedDn = enrichedDn,
 	minSetSizes = minSetSize,
 	maxSetSizes = maxSetSize,
-	tableReportComparisons = comparisons,
+	tableReportComparisons = gseaComparisons,
 	topNHeatmap = 80,
 	topNTable = 100,
 	expression = degAllLst,
 	geneNames  = geneNames,
 	sigCutoff = 0.01,
 	hsigCutoff = 0.001,
-	sigCutoffCustom = 0.1,
-	hsigCutoffCustom = 0.01,
+	sigCutoffCustom = 0.01,
+	hsigCutoffCustom = 0.001,
 	overlapSigCutoff = 0.05,
 	overlapHSigCutoff = 0.001,
 	@enabled = runGSEA
