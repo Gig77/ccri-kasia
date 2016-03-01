@@ -27,6 +27,9 @@ ensemblDb         = INPUT(path="/usr/local/share/anduril-bundles/moksiskaan/etc/
 genesetAnnotation = INPUT(path="/mnt/projects/generic/data/ccri/geneset_annotation.tsv")                            // assigns gene sets to categories for filtering
 latexHeader       = INPUT(path="/mnt/projects/kasia/scripts/anduril/latexHeader")
 
+fukaREH           = INPUT(path="/mnt/projects/kasia/data/telamlKD.REHandAT2.esetnsF.onlyG_late_REH.annot.tsv")
+fukaAT2           = INPUT(path="/mnt/projects/kasia/data/telamlKD.REHandAT2.esetnsF.onlyG_late_AT2.annot.tsv")
+
 //------------------------------------------------------------------------------------------------
 //--- CONSTANTS
 //------------------------------------------------------------------------------------------------
@@ -367,6 +370,25 @@ for ID, comparison : comparisons
 			ORDER BY ABS("fc") DESC, "q"
 		''',
 		@name  = "deseqAnnotated_" + std.quote(ID, type="Anduril")
+	)
+	
+	deseqFuka = TableQuery
+	(
+		table1 = deseqAnnotated,
+		table2 = fukaREH,
+		table3 = fukaAT2,
+		query  = 
+			"""
+				SELECT  table1.*, 
+						table2."Padj.onlyG_late_REH"  AS "Padj.fuka.kdER.d20plus.REH", 
+						table2."logFC.onlyG_late_REH" AS "logFC.fuka.kdER.d20plus.REH", 
+						table3."Padj.onlyG_late_AT2"  AS "Padj.fuka.kdER.d20plus.AT2", 
+						table3."logFC.onlyG_late_AT2" AS "logFC.fuka.kdER.d20plus.AT2" 
+				FROM table1
+						LEFT JOIN table2 ON table1."Gene" = table2."syms"
+						LEFT JOIN table3 ON table1."Gene" = table3."syms" 
+			""",
+		@name  = "deseqFuka_" + std.quote(ID, type="Anduril")
 	)
 		
 	// subset statistically significant DEGs
